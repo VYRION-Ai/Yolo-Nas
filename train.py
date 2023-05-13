@@ -26,7 +26,7 @@ def getpreferredencoding(do_setlocale=True):
 
 locale.getpreferredencoding = getpreferredencoding
 parser = argparse.ArgumentParser(description='Train a detection model with SuperGradients')
-parser.add_argument('--project', type=str, default='pane', help='name of the project')
+parser.add_argument('--project', type=str, default='Dataset', help='name of the project')
 parser.add_argument('--location', type=str, default='Dataset', help='location of the dataset')
 parser.add_argument('--model-arch', type=str, default='yolo_nas_s', help='model architecture')
 parser.add_argument('--batch-size', type=int, default=16, help='batch size')
@@ -37,49 +37,29 @@ args = parser.parse_args()
 
 experiment_name = args.project
 ckpt_root_dir = args.checkpoint_dir
+# Initialize default directory paths
+train_images_dir = None
+train_labels_dir = None
+val_images_dir = None
+val_labels_dir = None
+test_images_dir = None
+test_labels_dir = None
 
-with open(args.project) as f:
-    data = yaml.load(f, Loader=yaml.FullLoader)
+with open(args.data) as f:
+   data = yaml.load(f, Loader=yaml.FullLoader)
+   train_paths = data['train']
+   train_images_dir=train_paths
+   train_labels_dir=train_paths.replace("images", "labels", train_paths.count("images") - 1)
+   val_paths = data['val']
+   val_images_dir = val_paths
+   val_labels_dir = val_paths.replace("images", "labels", val_paths.count("images") - 1)
+   test_paths = data.get('test', [])
+   test_images_dir =test_paths
+   test_labels_dir =test_paths.replace("images", "labels", test_paths.count("images") - 1)
 
-train_paths = data['train']
-for train_path in train_paths:
-    if 'images/train' in train_path:
-        train_images_dir = os.path.join(data['path'], train_path)
-        train_labels_dir = os.path.join(data['path'], 'labels/train')
-        break
-    elif 'train/images' in train_path:
-        train_images_dir = os.path.join(data['path'], train_path)
-        train_labels_dir = os.path.join(data['path'], 'train/labels')
-        break
-
-val_paths = data['val']
-for val_path in val_paths:
-    if 'images/valid' in val_path:
-        val_images_dir = os.path.join(data['path'], val_path)
-        val_labels_dir = os.path.join(data['path'], 'labels/valid')
-        break
-    elif 'valid/images' in val_path:
-        val_images_dir = os.path.join(data['path'], val_path)
-        val_labels_dir = os.path.join(data['path'], 'valid/labels')
-        break
-
-test_paths = data.get('test', [])
-if len(test_paths) > 0:
-    for test_path in test_paths:
-        if 'images/test' in test_path:
-            test_images_dir = os.path.join(data['path'], test_path)
-            test_labels_dir = os.path.join(data['path'], 'labels/test')
-            break
-        elif 'test/images' in test_path:
-            test_images_dir = os.path.join(data['path'], test_path)
-            test_labels_dir = os.path.join(data['path'], 'test/labels')
-            break
-else:
-    test_images_dir = None
-    test_labels_dir = None
 
 dataset_params = {
-    'data_dir': data['path'],
+    'data_dir':args.location,
     'train_images_dir': train_images_dir,
     'train_labels_dir': train_labels_dir,
     'val_images_dir': val_images_dir,
@@ -88,7 +68,7 @@ dataset_params = {
     'test_labels_dir': test_labels_dir,
     'classes': [data['names'][i] for i in range(data['nc'])]
 }
-
+print('dataset_params',dataset_params)
 # dataset_params = {
 #     'data_dir': args.location,
 #     'train_images_dir': 'images/train',
