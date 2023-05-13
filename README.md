@@ -40,7 +40,11 @@ And finally, it's time to start training! Navigate to the YOLO-NAS directory and
 %cd /content/Yolo-Nas
 !python train.py --project "Dataset"  --data /content/Dataset/data.yaml --location '/content/Dataset' --model-arch yolo_nas_s --batch-size 16 --max-epochs 25 --checkpoint-dir /content/checkpoints
 ```
-
+Validation
+```
+%cd /content/Yolo-Nas
+!python valid.py  --data /content/Dataset/data.yaml --location '/content/Dataset' --weights /content/checkpoints/Dataset/ckpt_best.pth
+```
 ## Contributing
 
 We welcome contributions from the community! If you encounter any issues or have any suggestions for improving the YOLO-NAS architecture, please feel free to open an issue or submit a pull request.
