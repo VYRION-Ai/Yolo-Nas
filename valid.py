@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 import supervision as sv
 import os
+import torch
 
 import numpy as np
 
@@ -33,10 +34,12 @@ locale.getpreferredencoding = getpreferredencoding
 parser = argparse.ArgumentParser(description='Train a detection model with SuperGradients')
 parser.add_argument('--weights', type=str, default='average_model.pth', help='name of the project')
 parser.add_argument('--location', type=str, default='Dataset', help='location of the dataset')
+parser.add_argument('--batch-size', type=int, default=16, help='batch size')
+parser.add_argument('--model-arch', type=str, default='yolo_nas_s', help='model architecture')
+parser.add_argument('--project', type=str, default='Dataset', help='name of the project')
 parser.add_argument('--checkpoint-dir', type=str, default=ROOT / 'checkpoints', help='directory to save checkpoints')
 parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='dataset.yaml path')
 args = parser.parse_args()
-
 experiment_name = args.project
 ckpt_root_dir = args.checkpoint_dir
 # Initialize default directory paths
@@ -56,10 +59,8 @@ dataset_params = {
     'classes': [data['names'][i] for i in range(data['nc'])]
 }
 
-BATCH_SIZE = args.batch_size
-MAX_EPOCHS = args.max_epochs
 MODEL_ARCH = args.model_arch
-
+BATCH_SIZE = args.batch_size
 
 test_data = coco_detection_yolo_format_val(
     dataset_params={
@@ -73,7 +74,8 @@ test_data = coco_detection_yolo_format_val(
         'num_workers': 2
     }
 )
-
+DEVICE = 'cuda' if torch.cuda.is_available() else "cpu"
+trainer = Trainer(experiment_name=experiment_name, ckpt_root_dir=ckpt_root_dir)
 best_model = models.get(
     MODEL_ARCH,
     num_classes=len(dataset_params['classes']),
@@ -95,38 +97,38 @@ trainer.test(
         )
     )
 )
-
-ds = sv.Dataset.from_yolo(
-    images_directory_path=dataset_params['test_images_dir'],
-    annotations_directory_path=dataset_params['test_labels_dir'],
-    data_yaml_path=args.data,
-    force_masks=False
-)
-keys = list(ds.images.keys())
-
-annotation_batches, prediction_batches = [], []
-
-for key in keys:
-    annotation=ds.annotations[key]
-    annotation_batch = np.column_stack((
-        annotation.xyxy, 
-        annotation.class_id
-    ))
-    annotation_batches.append(annotation_batch)
-
-    prediction=predictions[key]
-    prediction_batch = np.column_stack((
-        prediction.xyxy,
-        prediction.class_id,
-        prediction.confidence
-    ))
-    prediction_batches.append(prediction_batch)
-
-confusion_matrix = ConfusionMatrix.from_detections(
-    true_batches=annotation_batches,
-    detection_batches=prediction_batches,
-    num_classes=len(ds.classes),
-    conf_threshold=CONFIDENCE_TRESHOLD
-)
-
-confusion_matrix.plot(os.path.join(HOME, "confusion_matrix.png"), class_names=ds.classes)
+#
+# ds = sv.Dataset.from_yolo(
+#     images_directory_path=dataset_params['test_images_dir'],
+#     annotations_directory_path=dataset_params['test_labels_dir'],
+#     data_yaml_path=args.data,
+#     force_masks=False
+# )
+# keys = list(ds.images.keys())
+#
+# annotation_batches, prediction_batches = [], []
+# predictions = {}
+# for key in keys:
+#     annotation=ds.annotations[key]
+#     annotation_batch = np.column_stack((
+#         annotation.xyxy,
+#         annotation.class_id
+#     ))
+#     annotation_batches.append(annotation_batch)
+#
+#     prediction=predictions[key]
+#     prediction_batch = np.column_stack((
+#         prediction.xyxy,
+#         prediction.class_id,
+#         prediction.confidence
+#     ))
+#     prediction_batches.append(prediction_batch)
+#
+# confusion_matrix = ConfusionMatrix.from_detections(
+#     true_batches=annotation_batches,
+#     detection_batches=prediction_batches,
+#     num_classes=len(ds.classes),
+#     conf_threshold=CONFIDENCE_TRESHOLD
+# )
+#
+# confusion_matrix.plot(os.path.join(HOME, "confusion_matrix.png"), class_names=ds.classes)
