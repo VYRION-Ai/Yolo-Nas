@@ -49,13 +49,13 @@ with open(args.data) as f:
    data = yaml.load(f, Loader=yaml.FullLoader)
    train_paths = data['train']
    train_images_dir=train_paths
-   train_labels_dir=train_paths.replace("images", "labels", train_paths.count("images") - 1)
+   train_labels_dir=train_paths.replace("images", "labels")
    val_paths = data['val']
    val_images_dir = val_paths
-   val_labels_dir = val_paths.replace("images", "labels", val_paths.count("images") - 1)
+   val_labels_dir = val_paths.replace("images", "labels")
    test_paths = data.get('test', [])
    test_images_dir =test_paths
-   test_labels_dir =test_paths.replace("images", "labels", test_paths.count("images") - 1)
+   test_labels_dir =test_paths.replace("images", "labels")
 
 
 dataset_params = {
