@@ -1,4 +1,9 @@
 Welcome to the YOLO-NAS Repository!
+![image](https://github.com/totoadel/Yolo-Nas/assets/23275255/6894bb61-3e84-46ef-af81-a5f69a9ee306)
+
+Object Detection
+
+![image](https://github.com/totoadel/Yolo-Nas/assets/23275255/8a317ed3-2c3c-4fdb-ba44-be7e3e25db67)
 
 Our architecture is designed to deliver unparalleled accuracy-speed performance, pushing the boundaries of what's possible in object detection. In this repository, we provide instructions for training your own model using our cutting-edge architecture.
 
