@@ -12,7 +12,12 @@ import os
 import yaml
 import sys
 from pathlib import Path
+import supervision as sv
+import os
 
+import numpy as np
+
+from onemetric.cv.object_detection import ConfusionMatrix
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
@@ -26,11 +31,8 @@ def getpreferredencoding(do_setlocale=True):
 
 locale.getpreferredencoding = getpreferredencoding
 parser = argparse.ArgumentParser(description='Train a detection model with SuperGradients')
-parser.add_argument('--project', type=str, default='Dataset', help='name of the project')
+parser.add_argument('--weights', type=str, default='average_model.pth', help='name of the project')
 parser.add_argument('--location', type=str, default='Dataset', help='location of the dataset')
-parser.add_argument('--model-arch', type=str, default='yolo_nas_s', help='model architecture')
-parser.add_argument('--batch-size', type=int, default=16, help='batch size')
-parser.add_argument('--max-epochs', type=int, default=25, help='maximum number of epochs')
 parser.add_argument('--checkpoint-dir', type=str, default=ROOT / 'checkpoints', help='directory to save checkpoints')
 parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='dataset.yaml path')
 args = parser.parse_args()
@@ -38,77 +40,26 @@ args = parser.parse_args()
 experiment_name = args.project
 ckpt_root_dir = args.checkpoint_dir
 # Initialize default directory paths
-train_images_dir = None
-train_labels_dir = None
-val_images_dir = None
-val_labels_dir = None
 test_images_dir = None
 test_labels_dir = None
 
 with open(args.data) as f:
-   data = yaml.load(f, Loader=yaml.FullLoader)
-   train_paths = data['train']
-   train_images_dir=train_paths
-   train_labels_dir=train_paths.replace("images", "labels")
-   val_paths = data['val']
-   val_images_dir = val_paths
-   val_labels_dir = val_paths.replace("images", "labels")
-   test_paths = data.get('test', [])
-   test_images_dir =test_paths
-   test_labels_dir =test_paths.replace("images", "labels")
-
+    data = yaml.load(f, Loader=yaml.FullLoader)
+    test_paths = data.get('test', [])
+    test_images_dir = test_paths
+    test_labels_dir = test_paths.replace("images", "labels")
 
 dataset_params = {
-    'data_dir':args.location,
-    'train_images_dir': train_images_dir,
-    'train_labels_dir': train_labels_dir,
-    'val_images_dir': val_images_dir,
-    'val_labels_dir': val_labels_dir,
+    'data_dir': args.location,
     'test_images_dir': test_images_dir,
     'test_labels_dir': test_labels_dir,
     'classes': [data['names'][i] for i in range(data['nc'])]
 }
-print('dataset_params',dataset_params)
-# dataset_params = {
-#     'data_dir': args.location,
-#     'train_images_dir': 'images/train',
-#     'train_labels_dir': 'labels/train',
-#     'val_images_dir': 'images/valid',
-#     'val_labels_dir': 'labels/valid',
-#     'test_images_dir': 'images/test',
-#     'test_labels_dir': 'labels/test',
-#     'classes': [args.project]
-# }
+
 BATCH_SIZE = args.batch_size
 MAX_EPOCHS = args.max_epochs
 MODEL_ARCH = args.model_arch
-trainer = Trainer(experiment_name=experiment_name, ckpt_root_dir=ckpt_root_dir)
 
-train_data = coco_detection_yolo_format_train(
-    dataset_params={
-        'data_dir': dataset_params['data_dir'],
-        'images_dir': dataset_params['train_images_dir'],
-        'labels_dir': dataset_params['train_labels_dir'],
-        'classes': dataset_params['classes']
-    },
-    dataloader_params={
-        'batch_size': BATCH_SIZE,
-        'num_workers': 2
-    }
-)
-
-val_data = coco_detection_yolo_format_val(
-    dataset_params={
-        'data_dir': dataset_params['data_dir'],
-        'images_dir': dataset_params['val_images_dir'],
-        'labels_dir': dataset_params['val_labels_dir'],
-        'classes': dataset_params['classes']
-    },
-    dataloader_params={
-        'batch_size': BATCH_SIZE,
-        'num_workers': 2
-    }
-)
 
 test_data = coco_detection_yolo_format_val(
     dataset_params={
@@ -123,48 +74,59 @@ test_data = coco_detection_yolo_format_val(
     }
 )
 
-model = models.get(
+best_model = models.get(
     MODEL_ARCH,
     num_classes=len(dataset_params['classes']),
-    pretrained_weights="coco"
+    checkpoint_path=args.weights
+).to(DEVICE)
+trainer.test(
+    model=best_model,
+    test_loader=test_data,
+    test_metrics_list=DetectionMetrics_050(
+        score_thres=0.1,
+        top_k_predictions=300,
+        num_cls=len(dataset_params['classes']),
+        normalize_targets=True,
+        post_prediction_callback=PPYoloEPostPredictionCallback(
+            score_threshold=0.01,
+            nms_top_k=1000,
+            max_predictions=300,
+            nms_threshold=0.7
+        )
+    )
 )
 
-train_params = {
-    'silent_mode': False,
-    "average_best_models": True,
-    "warmup_mode": "linear_epoch_step",
-    "warmup_initial_lr": 1e-6,
-    "lr_warmup_epochs": 3,
-    "initial_lr": 5e-4,
-    "lr_mode": "cosine",
-    "cosine_final_lr_ratio": 0.1,
-    "optimizer": "Adam",
-    "optimizer_params": {"weight_decay": 0.0001},
-    "zero_weight_decay_on_bias_and_bn": True,
-    "ema": True,
-    "ema_params": {"decay": 0.9, "decay_type": "threshold"},
-    "max_epochs": MAX_EPOCHS,
-    "mixed_precision": True,
-    "loss": PPYoloELoss(
-        use_static_assigner=False,
-        num_classes=len(dataset_params['classes']),
-        reg_max=16
-    ),
-    "valid_metrics_list": [
-        DetectionMetrics_050(
-            score_thres=0.1,
-            top_k_predictions=300,
-            num_cls=len(dataset_params['classes']),
-            normalize_targets=True,
-            post_prediction_callback=PPYoloEPostPredictionCallback(
-                score_threshold=0.01,
-                nms_top_k=1000,
-                max_predictions=300,
-                nms_threshold=0.7
-            )
-        )
-    ],
-    "metric_to_watch": 'mAP@0.50'
-}
+ds = sv.Dataset.from_yolo(
+    images_directory_path=dataset_params['test_images_dir'],
+    annotations_directory_path=dataset_params['test_labels_dir'],
+    data_yaml_path=args.data,
+    force_masks=False
+)
+keys = list(ds.images.keys())
 
-trainer.train(model=model, training_params=train_params, train_loader=train_data, valid_loader=val_data)
+annotation_batches, prediction_batches = [], []
+
+for key in keys:
+    annotation=ds.annotations[key]
+    annotation_batch = np.column_stack((
+        annotation.xyxy, 
+        annotation.class_id
+    ))
+    annotation_batches.append(annotation_batch)
+
+    prediction=predictions[key]
+    prediction_batch = np.column_stack((
+        prediction.xyxy,
+        prediction.class_id,
+        prediction.confidence
+    ))
+    prediction_batches.append(prediction_batch)
+
+confusion_matrix = ConfusionMatrix.from_detections(
+    true_batches=annotation_batches,
+    detection_batches=prediction_batches,
+    num_classes=len(ds.classes),
+    conf_threshold=CONFIDENCE_TRESHOLD
+)
+
+confusion_matrix.plot(os.path.join(HOME, "confusion_matrix.png"), class_names=ds.classes)
