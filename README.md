@@ -43,7 +43,8 @@ And finally, it's time to start training! Navigate to the YOLO-NAS directory and
 Evaluate trained model
 ```
 %cd /content/Yolo-Nas
-!python valid.py  --data /content/Dataset/data.yaml --location '/content/Dataset' --weights /content/checkpoints/Dataset/ckpt_best.pth
+!python valid.py  --data /content/Dataset/data.yaml --location '/content/Dataset' --project "Dataset" --weights /content/checkpoints/Dataset/ckpt_best.pth
+
 ```
 ## Contributing
 
