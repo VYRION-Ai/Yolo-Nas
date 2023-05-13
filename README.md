@@ -20,7 +20,7 @@ After installation is complete, don't forget to restart the runtime by navigatin
 Next, clone this repository with the following command:
 
 ```
-!git clone https://github.com/totoadel/Yolo-Nas.git
+!git clone  https://github.com/VYRION-Ai/Yolo-Nas.git
 ```
 
 You'll then want to add your dataset to the mix. To do this, use the following code snippet with Google Colab:
@@ -29,7 +29,7 @@ You'll then want to add your dataset to the mix. To do this, use the following c
 from google.colab import drive
 drive.mount('/content/drive')
 %cd /content/
-%cp /content/drive/MyDrive/Master/yolo_dataset.zip /content/
+%cp /content/drive/MyDrive/yolo_dataset.zip /content/
 !unzip  /content/yolo_dataset.zip
 !rm  /content/yolo_dataset.zip
 ```
