@@ -150,37 +150,33 @@ for key in keys:
     )
     images.append(frame_with_predictions)
     titles.append('predictions')
-#print(type(images))
-#cv2.imwrite('image.jpg', images)
-#%matplotlib inline
-#sv.plot_images_grid(images=images, titles=titles, grid_size=(n, 2), size=(2 * 4, n * 4))
-###################3333
-# keys = list(ds.images.keys())
+for i, (image, title) in enumerate(zip(images, titles)):
+    filename = f"{title}.jpg"  # use title as the filename
+    cv2.imwrite(filename, image)  # save the image to disk
+
+keys = list(ds.images.keys())
+
+annotation_batches, prediction_batches = [], []
+for key in keys:
+    annotation=ds.annotations[key]
+    annotation_batch = np.column_stack((
+        annotation.xyxy,
+        annotation.class_id
+    ))
+    annotation_batches.append(annotation_batch)
+    prediction=predictions[key]
+    prediction_batch = np.column_stack((
+        prediction.xyxy,
+        prediction.class_id,
+        prediction.confidence
+    ))
+    prediction_batches.append(prediction_batch)
 #
-# annotation_batches, prediction_batches = [], []
-# predictions = {}
-# for key in keys:
-#     annotation=ds.annotations[key]
-#     annotation_batch = np.column_stack((
-#         annotation.xyxy,
-#         annotation.class_id
-#     ))
-#     annotation_batches.append(annotation_batch)
-#     print(('key',key))
+confusion_matrix = ConfusionMatrix.from_detections(
+    true_batches=annotation_batches,
+    detection_batches=prediction_batches,
+    num_classes=len(ds.classes),
+    conf_threshold=CONFIDENCE_TRESHOLD
+)
 #
-#     prediction=predictions[key]
-#     prediction_batch = np.column_stack((
-#         prediction.xyxy,
-#         prediction.class_id,
-#         prediction.confidence
-#     ))
-#     prediction_batches.append(prediction_batch)
-#
-# confusion_matrix = ConfusionMatrix.from_detections(
-#     true_batches=annotation_batches,
-#     detection_batches=prediction_batches,
-#     num_classes=len(ds.classes),
-#     conf_threshold=CONFIDENCE_TRESHOLD
-# )
-#
-# confusion_matrix.plot(os.path.join(HOME, "confusion_matrix.png"), class_names=ds.classes)
+confusion_matrix.plot(os.path.join(os.getcwd(), "confusion_matrix.png"), class_names=ds.classes)
