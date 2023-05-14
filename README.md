@@ -13,6 +13,8 @@ To begin your training journey, first install the `super-gradients` library vers
 
 ```
 !pip install -q super-gradients==3.1.1
+!pip install onemetric
+!pip install -q supervision
 ```
 
 After installation is complete, don't forget to restart the runtime by navigating to `Runtime -> Restart runtime` and confirming with a simple click of "Yes".
