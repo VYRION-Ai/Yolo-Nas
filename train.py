@@ -18,12 +18,8 @@ ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
-
-
 def getpreferredencoding(do_setlocale=True):
     return "UTF-8"
-
-
 locale.getpreferredencoding = getpreferredencoding
 parser = argparse.ArgumentParser(description='Train a detection model with SuperGradients')
 parser.add_argument('--project', type=str, default='Dataset', help='name of the project')
@@ -42,9 +38,6 @@ train_images_dir = None
 train_labels_dir = None
 val_images_dir = None
 val_labels_dir = None
-test_images_dir = None
-test_labels_dir = None
-
 with open(args.data) as f:
    data = yaml.load(f, Loader=yaml.FullLoader)
    train_paths = data['train']
@@ -53,9 +46,7 @@ with open(args.data) as f:
    val_paths = data['val']
    val_images_dir = val_paths
    val_labels_dir = val_paths.replace("images", "labels")
-   test_paths = data.get('test', [])
-   test_images_dir =test_paths
-   test_labels_dir =test_paths.replace("images", "labels")
+
 
 
 dataset_params = {
@@ -68,17 +59,6 @@ dataset_params = {
     'test_labels_dir': test_labels_dir,
     'classes': [data['names'][i] for i in range(data['nc'])]
 }
-print('dataset_params',dataset_params)
-# dataset_params = {
-#     'data_dir': args.location,
-#     'train_images_dir': 'images/train',
-#     'train_labels_dir': 'labels/train',
-#     'val_images_dir': 'images/valid',
-#     'val_labels_dir': 'labels/valid',
-#     'test_images_dir': 'images/test',
-#     'test_labels_dir': 'labels/test',
-#     'classes': [args.project]
-# }
 BATCH_SIZE = args.batch_size
 MAX_EPOCHS = args.max_epochs
 MODEL_ARCH = args.model_arch
@@ -110,18 +90,6 @@ val_data = coco_detection_yolo_format_val(
     }
 )
 
-test_data = coco_detection_yolo_format_val(
-    dataset_params={
-        'data_dir': dataset_params['data_dir'],
-        'images_dir': dataset_params['test_images_dir'],
-        'labels_dir': dataset_params['test_labels_dir'],
-        'classes': dataset_params['classes']
-    },
-    dataloader_params={
-        'batch_size': BATCH_SIZE,
-        'num_workers': 2
-    }
-)
 
 model = models.get(
     MODEL_ARCH,
